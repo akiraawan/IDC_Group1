@@ -2,7 +2,7 @@
 ## Group Members
 | Names        | Course           |
 | ------------- |:-------------:|
-| Akira Wan | 🧮 Mathmatics |
+| Akira Wan | 🧮 Mathematics |
 | Ethan Chang | 🩺 Medicine |
 | Devanshi Shah | 🧬 MedBio |
 | Zile Feng | ⚙️ Design Eng |
