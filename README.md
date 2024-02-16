@@ -4,5 +4,5 @@
 | ------------- |:-------------:|
 | Akira Wan | 🧮 Mathematics |
 | Ethan Chang | 🩺 Medicine |
-| Devanshi Shah | 🔬 Bio |
+| Devanshi Shah | 🔬 Biology |
 | Zile Feng | ⚙️ Design Eng |
