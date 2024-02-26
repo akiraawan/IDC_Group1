@@ -32,11 +32,7 @@ def get_pd_data():
         data.loc[len(data.index)] = info
 
 def pt_dir_from_int(pt_num:int):
-    num = str(pt_num) 
-    if pt_num < 10:
-        num = "00" + num
-    elif pt_num < 100:
-        num = "0" + num
+    num = str(pt_num) .zfill(3)
     filename = "patient"+num
     return os.path.join(DIR, filename)
 
