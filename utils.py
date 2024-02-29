@@ -10,7 +10,7 @@ import numpy as np
 
 # TEST_DIR = "../database/testing"
 # TEST_PT_NUM = 50
-DIR = "../database/training"
+DIR = "/Users/zilefeng/Library/CloudStorage/OneDrive-ImperialCollegeLondon/Interdisplinary computing researching/database/training"
 PT_NUM = 100
 
 class Frame(Enum):
@@ -72,11 +72,39 @@ def get_spacing(pt_num:int):
     spacing = affine.diagonal()[:3] #Spacing between voxels, aka spatial resolution
     return spacing
 
+def volume_from_a_frame(pt_num): ##Getting volumes from a single frames of masks
+    nib_data = nib_from_int(pt_num, Frame.END_SYSTOLIC, True).get_fdata()
+    spacing=get_spacing(pt_num)
+    thickness = spacing[2]
+    area = spacing[0]*spacing[0]
+    volume_per_voxel=area*thickness
+    num_wall_voxel=0
+    num_cavity_voxel=0
+    for layer in range(nib_data.shape[2]-1):
+        for row in range(nib_data.shape[1]-1):
+            for column in range(nib_data.shape[0]-1):
+                if nib_data[column,row,layer]==2:
+                    num_wall_voxel+=1
+                if nib_data[column,row,layer]==3:
+                    num_cavity_voxel+=1
+    print ("volume per voxel: ", volume_per_voxel)
+    return num_wall_voxel*volume_per_voxel,num_cavity_voxel*volume_per_voxel
+
+def plot_volume_over_frames(): ## Plot the volume changes over time according to patient number
+    plt.legend()
+    plt.xlabel("Volume")
+    plt.ylabel('Time-stepts')
+    plt.title('Time-series segmentation for RVC (red), LVM (green), LVC (blue) and their corresponding volume dynamics.')
+    # Displaying the plot
+    plt.show(block=False)
+    
 def plot_ed_es(pt_num:int, layer:int): #Layer = y-axis
     ed = nib_from_int(pt_num, Frame.END_DIASTOLIC).get_fdata()
     es = nib_from_int(pt_num, Frame.END_SYSTOLIC).get_fdata()
     ed_mask = nib_from_int(pt_num, Frame.END_DIASTOLIC, True).get_fdata()
     es_mask = nib_from_int(pt_num, Frame.END_SYSTOLIC, True).get_fdata()
+
+    volume_from_a_frame(26)
 
     print("Patient:",pt_num)
     print("Image Shape:",ed.shape)
@@ -112,4 +140,5 @@ def label_reader(pt_num:int):
     return info
 
 get_pd_data()
-plot_ed_es(26,5)
+plot_ed_es(26,9)
+plot_volume_over_frames()
