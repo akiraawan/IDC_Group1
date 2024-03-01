@@ -25,6 +25,8 @@ class Utils:
         self.columns_precnn = ["PtNum", "ED", "ES", "Group", "Height", "NbFrame", "Weight", "XLen", "YLen", "ZLen", "Time"]
         self.train_val = pd.DataFrame(columns=self.columns_precnn)
         self.get_pd_data()
+        self.plot_ed_es(26, 9)
+        #self.plot_volume_over_frames()
 
     def get_pd_data(self):
         for i in range(1, PT_NUM+1):
@@ -70,10 +72,10 @@ class Utils:
     def get_spacing(self, pt_num: int):
         img = self.nib_from_int(pt_num)
         affine = img.affine
-        spacing = affine.diagonal()[:3]
+        spacing = affine.diagonal()[:3]s
         return spacing
 
-    def volume_from_a_frame(self, pt_num):  #Getting volumes from a single frames of masks
+    def volume_from_a_frame(self, pt_num):
         nib_data = self.nib_from_int(pt_num, Frame.END_SYSTOLIC, True).get_fdata()
         spacing = self.get_spacing(pt_num)
         thickness = spacing[2]
@@ -88,10 +90,10 @@ class Utils:
                         num_wall_voxel += 1
                     if nib_data[column, row, layer] == 3:
                         num_cavity_voxel += 1
-        print ("volume per voxel: ", volume_per_voxel)
-        return num_wall_voxel*volume_per_voxel, num_cavity_voxel*volume_per_voxel
+        print("volume per voxel: ", volume_per_voxel)
+        return (num_wall_voxel*volume_per_voxel, num_cavity_voxel*volume_per_voxel)
 
-    def plot_volume_over_frames():  # Plot the volume changes over time according to patient number
+    def plot_volume_over_frames(self):  # Plot the volume changes over time according to patient number
         plt.legend()
         plt.xlabel("Volume")
         plt.ylabel('Time-stepts')
@@ -104,6 +106,8 @@ class Utils:
         es = self.nib_from_int(pt_num, Frame.END_SYSTOLIC).get_fdata()
         ed_mask = self.nib_from_int(pt_num, Frame.END_DIASTOLIC, True).get_fdata()
         es_mask = self.nib_from_int(pt_num, Frame.END_SYSTOLIC, True).get_fdata()
+
+        self.volume_from_a_frame(26)
 
         print("Patient:", pt_num)
         print("Image Shape:", ed.shape)
@@ -141,5 +145,3 @@ class Utils:
 
 
 A = Utils()
-A.plot_ed_es(26, 9)
-A.plot_volume_over_frames()
