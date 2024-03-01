@@ -73,6 +73,32 @@ class Utils:
         spacing = affine.diagonal()[:3]
         return spacing
 
+    def volume_from_a_frame(self, pt_num):  #Getting volumes from a single frames of masks
+        nib_data = self.nib_from_int(pt_num, Frame.END_SYSTOLIC, True).get_fdata()
+        spacing = self.get_spacing(pt_num)
+        thickness = spacing[2]
+        area = spacing[0]*spacing[0]
+        volume_per_voxel = area*thickness
+        num_wall_voxel = 0
+        num_cavity_voxel = 0
+        for layer in range(nib_data.shape[2]-1):
+            for row in range(nib_data.shape[1]-1):
+                for column in range(nib_data.shape[0]-1):
+                    if nib_data[column, row, layer] == 2:
+                        num_wall_voxel += 1
+                    if nib_data[column, row, layer] == 3:
+                        num_cavity_voxel += 1
+        print ("volume per voxel: ", volume_per_voxel)
+        return num_wall_voxel*volume_per_voxel, num_cavity_voxel*volume_per_voxel
+
+    def plot_volume_over_frames():  # Plot the volume changes over time according to patient number
+        plt.legend()
+        plt.xlabel("Volume")
+        plt.ylabel('Time-stepts')
+        plt.title('Time-series segmentation for RVC (red), LVM (green), LVC (blue) and their corresponding volume dynamics.')
+        # Displaying the plot
+        plt.show(block=False)
+
     def plot_ed_es(self, pt_num: int, layer: int):
         ed = self.nib_from_int(pt_num, Frame.END_DIASTOLIC).get_fdata()
         es = self.nib_from_int(pt_num, Frame.END_SYSTOLIC).get_fdata()
@@ -115,4 +141,5 @@ class Utils:
 
 
 A = Utils()
-print(A.train_val)
+A.plot_ed_es(26, 9)
+A.plot_volume_over_frames()
