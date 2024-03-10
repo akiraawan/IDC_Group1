@@ -126,6 +126,12 @@ def plot_nimg_data(imgs:np.ndarray, layer:int): #Max 4 imgs
         plt.title("Image Data")
     plt.show()
 
+def get_spacing(pt_num:int):
+    img = nib_from_int(pt_num)
+    affine = img.affine
+    spacing = affine.diagonal()[:3]
+    return spacing
+
 def volume_from_a_frame(pt_num): ##Getting volumes from a single frames of masks
     nib_data = nib_from_int(pt_num, Frame.END_SYSTOLIC, True).get_fdata()
     spacing=get_spacing(pt_num)
