@@ -8,7 +8,7 @@ import numpy as np
 #gt = mask
 #4d = cine-mri over time
 
-EST_DIR = "../database/testing"
+TEST_DIR = "../database/testing"
 TEST_PT_NUM = 50
 DIR = "../database/training"
 PT_NUM = 100
@@ -21,9 +21,10 @@ class Frame(Enum):
 
 
 class Utils:
-    def __init__(self):
+    def __init__(self, dir):
         self.columns_precnn = ["PtNum", "ED", "ES", "Group", "Height", "NbFrame", "Weight", "XLen", "YLen", "ZLen", "Time"]
         self.train_val = pd.DataFrame(columns=self.columns_precnn)
+        self.dir = dir
         self.get_pd_data()
         self.plot_ed_es(26, 9)
         #self.plot_volume_over_frames()
@@ -41,7 +42,7 @@ class Utils:
     def pt_dir_from_int(self, pt_num: int):
         num = str(pt_num).zfill(3)
         filename = "patient" + num
-        return os.path.join(DIR, filename)
+        return os.path.join(self.dir, filename)
 
     def filepath_from_int(self, pt_num: int, frame=Frame.FULL, mask=False):
         pt_dir = self.pt_dir_from_int(pt_num)
@@ -72,7 +73,7 @@ class Utils:
     def get_spacing(self, pt_num: int):
         img = self.nib_from_int(pt_num)
         affine = img.affine
-        spacing = affine.diagonal()[:3]s
+        spacing = affine.diagonal()[:3]
         return spacing
 
     def volume_from_a_frame(self, pt_num):
@@ -142,6 +143,3 @@ class Utils:
                 continue
             info.append(j[1])
         return info
-
-
-A = Utils()
