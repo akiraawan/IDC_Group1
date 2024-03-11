@@ -12,7 +12,7 @@ import math
 
 # TEST_DIR = "../database/testing"
 # TEST_PT_NUM = 50
-DIR = "/Users/zilefeng/Library/CloudStorage/OneDrive-ImperialCollegeLondon/Interdisplinary computing researching/database/training"
+DIR = "../database/training"
 PT_NUM = 100
 
 class Frame(Enum):
@@ -111,13 +111,27 @@ def random_crop(img:np.ndarray, crop_size):
         lb_z = 0
     return img[lb_x:lb_x + crop_size[0], lb_y:lb_y + crop_size[1], lb_z:lb_z + crop_size[2]]
 
-def plot_nimg_data(imgs:np.ndarray, layer:int): #Max 4 imgs
-    if len(imgs.shape) == 4:
+def img_standard(img:nib.nifti1.Nifti1Image, crop_size, random:bool=False):
+    img_data = resample_volume(img)
+    img_data = normalise_img(img_data.get_fdata())
+    img_data = resize_img(img_data, crop_size)
+    if random:
+        img_data = random_crop(img_data, crop_size)
+    else:
+        img_data = center_crop(img_data, crop_size)
+    return img_data
+
+def plot_nimg_data(layer:int, *args): #Max 4 imgs
+    if len(args) == 0: return
+    imgs = []
+    for arg in args:
+        if type(arg) == np.ndarray:
+            imgs.append(arg)
+    if len(imgs) > 1:
         plt.figure(figsize = (10,10))
-        x = imgs.shape[3] if imgs.shape[3] < 4 else 4
-        for i in range(x):
+        for i in range(len(imgs)):
             plt.subplot(2,2,i+1)
-            plt.imshow(imgs[:,:,layer,i], cmap = 'gray')
+            plt.imshow(imgs[i][:,:,layer], cmap = 'gray')
             text = "Image Data" + str(i)
             plt.title(text)
     else:

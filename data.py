@@ -1,14 +1,17 @@
 from utils import *
 
 CROP_SIZE = (224,224,10)
-img = nib_from_int(30, Frame.END_DIASTOLIC)
 
-img_norm = resample_volume(img)
-img_data = normalise_img(img_norm.get_fdata())
-img_data = resize_img(img_data, CROP_SIZE)
+#Could make img_standard() output both img and mask, make it async, a lot more efficient
+def load_img_train(pt_num:int, frame:Frame):
+    img = nib_from_int(pt_num, frame)
+    img_mask = nib_from_int(pt_num, frame, True)
+    img_data = img_standard(img, CROP_SIZE)
+    img_mask_data = img_standard(img_mask, CROP_SIZE)
+    return img_data, img_mask_data
 
-center_data = center_crop(img_data, CROP_SIZE)
-random_data = random_crop(img_data, CROP_SIZE)
+img_data, img_mask_data = load_img_train(30, Frame.END_DIASTOLIC)
+#img_data = np.flip(img_data, 0) #flip horizontally(0), vertically(1)
+#img_data = np.rot90(img_data) #set k, 1k =90 degrees
 
-imgs = np.stack((center_data, random_data), axis=3)
-plot_nimg_data(imgs, 5)
+plot_nimg_data(5, img_data, img_mask_data)
