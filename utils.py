@@ -10,9 +10,9 @@ import math
 #gt = mask
 #4d = cine-mri over time
 
-# TEST_DIR = "../database/testing"
-# TEST_PT_NUM = 50
-DIR = "../database/training"
+TEST_DIR = "../database/testing"
+TEST_PT_NUM = 50
+TRAINING_DIR = "../database/training"
 PT_NUM = 100
 
 class Frame(Enum):
@@ -20,23 +20,32 @@ class Frame(Enum):
     END_DIASTOLIC = 1
     END_SYSTOLIC = 2
 
-def get_pd_data():
+def get_pd_data(testing:bool=False):
     columns = ["PtNum", "ED", "ES", "Group", "Height", "NbFrame", "Weight", "XLen", "YLen", "ZLen", "Time"]
     global data
     data = pd.DataFrame(columns=columns)
-    for i in range(1, PT_NUM+1):
-        info = label_reader(i)
+    x_start = 1 
+    x_end = PT_NUM + 1
+    if testing:
+        x_start += PT_NUM
+        x_end += TEST_PT_NUM
+    for i in range(x_start, x_end):
+        info = label_reader(i, testing)
         info.insert(0, i)
-        pt_dir = pt_dir_from_int(i)
+        pt_dir = pt_dir_from_int(i, testing)
         img_4d = nib.nifti1.load(os.path.join(pt_dir, pt_dir.split("/")[-1]+"_4d.nii")).shape
         for j in img_4d:
             info.append(j)
         data.loc[len(data.index)] = info
 
-def pt_dir_from_int(pt_num:int):
-    num = str(pt_num) .zfill(3)
+def pt_dir_from_int(pt_num:int, testing:bool=False):
+    if testing:
+        directory = TEST_DIR
+    else:
+        directory = TRAINING_DIR
+    num = str(pt_num).zfill(3)
     filename = "patient"+num
-    return os.path.join(DIR, filename)
+    return os.path.join(directory, filename)
 
 def filepath_from_int(pt_num:int, frame=Frame.FULL, mask=False):
     pt_dir = pt_dir_from_int(pt_num)
@@ -201,8 +210,8 @@ def plot_ed_es(pt_num:int, layer:int): #Layer = y-axis
 
     plt.show()
 
-def label_reader(pt_num:int):
-    f = open(os.path.join(pt_dir_from_int(pt_num), "Info.cfg"), "r")
+def label_reader(pt_num:int, testing:bool=False):
+    f = open(os.path.join(pt_dir_from_int(pt_num, testing), "Info.cfg"), "r")
     text = f.read()
     f.close()
     lines = text.split('\n')
@@ -214,6 +223,7 @@ def label_reader(pt_num:int):
     return info
 
 get_pd_data()
+print(data)
 # obj = nib_from_int(1)
 # print(obj.header["pixdim"][3])
 # print(get_spacing(1))
