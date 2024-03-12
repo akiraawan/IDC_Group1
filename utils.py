@@ -5,8 +5,8 @@ from enum import Enum
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import math
-
+import asyncio
+import concurrent.futures
 #gt = mask
 #4d = cine-mri over time
 
@@ -30,9 +30,9 @@ def get_pd_data(testing:bool=False):
         x_start += PT_NUM
         x_end += TEST_PT_NUM
     for i in range(x_start, x_end):
-        info = label_reader(i, testing)
+        info = label_reader(i, testing=testing)
         info.insert(0, i)
-        pt_dir = pt_dir_from_int(i, testing)
+        pt_dir = pt_dir_from_int(i, testing=testing)
         img_4d = nib.nifti1.load(os.path.join(pt_dir, pt_dir.split("/")[-1]+"_4d.nii")).shape
         for j in img_4d:
             info.append(j)
@@ -47,8 +47,8 @@ def pt_dir_from_int(pt_num:int, testing:bool=False):
     filename = "patient"+num
     return os.path.join(directory, filename)
 
-def filepath_from_int(pt_num:int, frame=Frame.FULL, mask=False):
-    pt_dir = pt_dir_from_int(pt_num)
+async def filepath_from_int(pt_num:int, frame=Frame.FULL, mask=False, testing:bool=False):
+    pt_dir = pt_dir_from_int(pt_num, testing=testing)
     filename = pt_dir.split("/")[-1]
     match frame:
         case Frame.FULL:
@@ -69,9 +69,25 @@ def filepath_from_int(pt_num:int, frame=Frame.FULL, mask=False):
     filename += ".nii"
     return os.path.join(pt_dir, filename)
 
-def nib_from_int(pt_num:int, frame=Frame.FULL, mask=False):
-    path = filepath_from_int(pt_num, frame, mask)
+def nib_from_int(pt_num:int, frame=Frame.FULL, mask=False, testing:bool=False):
+    path = filepath_from_int(pt_num, frame, mask, testing=testing)
     return nib.nifti1.load(path)
+
+async def get_img_train(pt_num:int, frame:Frame):
+    path = await filepath_from_int(pt_num, frame)
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        img = await asyncio.get_event_loop().run_in_executor(
+            pool, nib.nifti1.load, path
+        )
+    return img
+    
+async def get_mask_train(pt_num:int, frame:Frame):
+    path = await filepath_from_int(pt_num, frame, True)
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        img = await asyncio.get_event_loop().run_in_executor(
+            pool, nib.nifti1.load, path
+        )
+    return img
 
 def normalise_img(img:np.ndarray): #Normalised to Zero mean and unit variance
     mean_intensity = np.mean(img)
@@ -120,14 +136,14 @@ def random_crop(img:np.ndarray, crop_size):
         lb_z = 0
     return img[lb_x:lb_x + crop_size[0], lb_y:lb_y + crop_size[1], lb_z:lb_z + crop_size[2]]
 
-def img_standard(img:nib.nifti1.Nifti1Image, crop_size, random:bool=False):
+async def img_standard(img:nib.nifti1.Nifti1Image, crop_size, random:bool=False):
     img_data = resample_volume(img)
     img_data = normalise_img(img_data.get_fdata())
     img_data = resize_img(img_data, crop_size)
     if random:
-        img_data = random_crop(img_data, crop_size)
+        img_data = random_crop(img_data, crop_size).astype(np.float32)
     else:
-        img_data = center_crop(img_data, crop_size)
+        img_data = center_crop(img_data, crop_size).astype(np.float32)
     return img_data
 
 def plot_nimg_data(layer:int, *args): #Max 4 imgs
@@ -149,8 +165,8 @@ def plot_nimg_data(layer:int, *args): #Max 4 imgs
         plt.title("Image Data")
     plt.show()
 
-def get_spacing(pt_num:int):
-    img = nib_from_int(pt_num)
+def get_spacing(pt_num:int, testing:bool=False):
+    img = nib_from_int(pt_num, testing=testing)
     affine = img.affine
     spacing = affine.diagonal()[:3]
     return spacing
@@ -181,11 +197,11 @@ def plot_volume_over_frames(): ## Plot the volume changes over time according to
     # Displaying the plot
     plt.show(block=False)
     
-def plot_ed_es(pt_num:int, layer:int): #Layer = y-axis
-    ed = nib_from_int(pt_num, Frame.END_DIASTOLIC).get_fdata()
-    es = nib_from_int(pt_num, Frame.END_SYSTOLIC).get_fdata()
-    ed_mask = nib_from_int(pt_num, Frame.END_DIASTOLIC, True).get_fdata()
-    es_mask = nib_from_int(pt_num, Frame.END_SYSTOLIC, True).get_fdata()
+def plot_ed_es(pt_num:int, layer:int, testing:bool=False): #Layer = y-axis
+    ed = nib_from_int(pt_num, Frame.END_DIASTOLIC, testing=testing).get_fdata()
+    es = nib_from_int(pt_num, Frame.END_SYSTOLIC, testing=testing).get_fdata()
+    ed_mask = nib_from_int(pt_num, Frame.END_DIASTOLIC, True, testing=testing).get_fdata()
+    es_mask = nib_from_int(pt_num, Frame.END_SYSTOLIC, True, testing=testing).get_fdata()
 
     volume_from_a_frame(26)
 
@@ -211,7 +227,7 @@ def plot_ed_es(pt_num:int, layer:int): #Layer = y-axis
     plt.show()
 
 def label_reader(pt_num:int, testing:bool=False):
-    f = open(os.path.join(pt_dir_from_int(pt_num, testing), "Info.cfg"), "r")
+    f = open(os.path.join(pt_dir_from_int(pt_num, testing=testing), "Info.cfg"), "r")
     text = f.read()
     f.close()
     lines = text.split('\n')
@@ -223,7 +239,6 @@ def label_reader(pt_num:int, testing:bool=False):
     return info
 
 get_pd_data()
-print(data)
 # obj = nib_from_int(1)
 # print(obj.header["pixdim"][3])
 # print(get_spacing(1))
