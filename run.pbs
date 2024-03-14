@@ -1,0 +1,19 @@
+#!/bin/bash
+#PBS -l select=1:ncpus=1:mem=32gb:ngpus=1:gpu_type=RTX6000
+#PBS -l walltime=05:00:00
+#PBS -N unet
+
+cd $PBS_O_WORKDIR
+
+module purge
+module add tools/prod
+module add Python/3.11.3-GCCcore-12.3.0
+module add virtualenv/20.23.1-GCCcore-12.3.0
+
+mkdir .venv
+virtualenv .venv
+source .venv/bin/activate
+
+python3 -m pip install -r requirements.txt
+
+python3 run.py
