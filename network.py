@@ -2,15 +2,19 @@ from tensorflow.keras import layers, models
 
 def double_conv3d(inputs, n_filters, n_axis=4, n_kernel=3, padding="same"):
     conv = layers.Conv3D(n_filters, n_kernel, padding=padding)(inputs)
+    conv = layers.BatchNormalization(axis=n_axis)(conv)
     conv = layers.LeakyReLU()(conv)
     conv = layers.Conv3D(n_filters, n_kernel, padding=padding)(conv)
+    conv = layers.BatchNormalization(axis=n_axis)(conv)
     conv = layers.LeakyReLU()(conv)
     return conv
 
 def first_double_conv3d(inputs, inputshape, n_filters, n_axis=4, n_kernel=3, padding="same"):
     conv = layers.Conv3D(n_filters, n_kernel, padding=padding, input_shape=inputshape)(inputs)
+    conv = layers.BatchNormalization(axis=n_axis)(conv)
     conv = layers.LeakyReLU()(conv)
     conv = layers.Conv3D(n_filters, n_kernel, padding=padding)(conv)
+    conv = layers.BatchNormalization(axis=n_axis)(conv)
     conv = layers.LeakyReLU()(conv)
     return conv
 
@@ -26,7 +30,7 @@ def concat_3d(up, conv):
     return layers.Concatenate()([up, conv])
 
 def output_conv3d(inputs):
-    return layers.Conv3D(1,1,activation="sigmoid")(inputs)
+    return layers.Conv3D(3,1, padding="same", activation="softmax")(inputs)
 
 def first_step(inputs, inputshape, n_filters):
     layer = first_double_conv3d(inputs, inputshape, n_filters)
