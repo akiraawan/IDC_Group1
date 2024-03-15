@@ -31,7 +31,7 @@ for train_index, val_index in kf.split(inputs, targets):
     history = model.fit(inputs[train_index], targets[train_index], epochs=50, batch_size=10, verbose=2)
     
     # Evaluate the model on the validation data for this fold
-    _, val = model.evaluate(inputs[val_index], targets[val_index], verbose=1)
+    val = model.evaluate(inputs[val_index], targets[val_index], verbose=1)
 
     fold_scores.append(val)
     model_name = "unet-"+str(len(fold_scores))
