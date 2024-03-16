@@ -5,8 +5,10 @@ from enum import Enum
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import asyncio
-import concurrent.futures
+import tensorflow as tf
+from scipy.ndimage import map_coordinates
+from scipy.ndimage.filters import gaussian_filter
+import elasticdeform
 #gt = mask
 #4d = cine-mri over time
 
@@ -73,25 +75,7 @@ def nib_from_int(pt_num:int, frame=Frame.FULL, mask=False, testing:bool=False):
     path = filepath_from_int(pt_num, frame, mask, testing=testing)
     return nib.nifti1.load(path)
 
-async def get_img_train(pt_num:int, frame:Frame):
-    path = filepath_from_int(pt_num, frame)
-    with concurrent.futures.ThreadPoolExecutor() as pool:
-        img = await asyncio.get_event_loop().run_in_executor(
-            pool, nib.nifti1.load, path
-        )
-    return img
-    
-async def get_mask_train(pt_num:int, frame:Frame):
-    path = filepath_from_int(pt_num, frame, True)
-    with concurrent.futures.ThreadPoolExecutor() as pool:
-        img = await asyncio.get_event_loop().run_in_executor(
-            pool, nib.nifti1.load, path
-        )
-    return img
-
 def normalise_img(img:np.ndarray): #Normalised to Zero mean and unit variance
-    if(type(img) != np.ndarray):
-        img = img.get_fdata()
     mean_intensity = np.mean(img)
     std_intensity = np.std(img)
     norm_img = (img - mean_intensity) / std_intensity
@@ -100,18 +84,15 @@ def normalise_img(img:np.ndarray): #Normalised to Zero mean and unit variance
 def resample_volume(img:nib.nifti1.Nifti1Image, voxel_size=[1.25,1.25,10]):
     voxel_size = np.array(voxel_size) / np.array(list(img.header.get_zooms()))
     resampled_img = nib_pro.resample_to_output(img, voxel_size, mode='wrap')
-    return resampled_img
+    return resampled_img.get_fdata()
 
 def resize_img(img:np.ndarray, new_shape):
-    if(type(img) != np.ndarray):
-        img = img.get_fdata()
     shape = img.shape
     if np.any(np.array(shape) < np.array(new_shape)):
         new_shape = tuple(np.max(np.concatenate((shape, new_shape)).reshape((2, len(shape))), axis=0))
     else:
         return img
     pad_value = img[0, 0, 0]
-    print(pad_value)
     res = np.ones(new_shape, dtype=img.dtype) * pad_value
     start = np.array(new_shape) / 2. - np.array(shape) / 2.
     res[int(start[0]):int(start[0]) + int(shape[0]),
@@ -125,7 +106,7 @@ def center_crop(img:np.ndarray, crop_size):
            int(center[1] - crop_size[1] / 2.):int(center[1] + crop_size[1] / 2.),
            int(center[2] - crop_size[2] / 2.):int(center[2] + crop_size[2] / 2.)]
 
-def random_crop(img:np.ndarray, crop_size):
+def random_crop(img:np.ndarray, img_mask:np.ndarray, crop_size):
     if crop_size[0] < img.shape[0]:
         lb_x = np.random.randint(0, img.shape[0] - crop_size[0])
     elif crop_size[0] == img.shape[0]:
@@ -138,18 +119,49 @@ def random_crop(img:np.ndarray, crop_size):
         lb_z = np.random.randint(0, img.shape[2] - crop_size[2])
     elif crop_size[2] == img.shape[2]:
         lb_z = 0
-    return img[lb_x:lb_x + crop_size[0], lb_y:lb_y + crop_size[1], lb_z:lb_z + crop_size[2]]
+    return (img[lb_x:lb_x + crop_size[0], lb_y:lb_y + crop_size[1], lb_z:lb_z + crop_size[2]], 
+            img_mask[lb_x:lb_x + crop_size[0], lb_y:lb_y + crop_size[1], lb_z:lb_z + crop_size[2]])
 
-async def img_standard(img:nib.nifti1.Nifti1Image, crop_size, random:bool=False, mask:bool=False):
-    img_data = resample_volume(img)
-    if not mask:
-        img_data = normalise_img(img_data.get_fdata())
-    img_data = resize_img(img_data, crop_size)
+def img_standard(pt_num:int, frame:Frame, crop_size, random:bool=False, n_classes:int=4):
+    img = resample_volume(nib_from_int(pt_num, frame))
+    img_mask = resample_volume(nib_from_int(pt_num, frame, True))
+    img = normalise_img(img)
+    img = resize_img(img, crop_size)
+    img_mask = resize_img(img_mask, crop_size)
     if random:
-        img_data = random_crop(img_data, crop_size).astype(np.float32)
+        img, img_mask = random_crop(img, img_mask, crop_size)
+        img = img.astype(np.float32)
+        img_mask = img_mask.astype(np.int8)
     else:
-        img_data = center_crop(img_data, crop_size).astype(np.float32)
-    return img_data
+        img = center_crop(img, crop_size).astype(np.float32)
+        img_mask = center_crop(img, crop_size).astype(np.int8)
+    img, img_mask = img_aug(img, img_mask)
+    img_mask = tf.one_hot(img_mask, depth=n_classes)
+    return img, img_mask
+
+def img_aug(img:np.ndarray, img_mask:np.ndarray):
+    flip = np.random.randint(0,1)
+    img = np.flip(img, flip) #flip horizontally(0), vertically(1)#
+    img_mask = np.flip(img_mask, flip)
+    rot = np.random.randint(0,3)
+    img = np.rot90(img, rot) #set k, 1k =90 degrees
+    img_mask = np.rot90(img_mask, rot)
+    img = gamma_correction(img)
+    return img, img_mask
+
+def gamma_correction(img:np.ndarray):
+    gamma = np.random.uniform(0.5, 2)
+    min_value = np.min(img)
+    max_value = np.max(img)
+    img = (img - min_value) / (max_value - min_value)
+    img = np.power(img, gamma)
+    return normalise_img(img)
+
+def get_spacing(pt_num:int, testing:bool=False):
+    img = nib_from_int(pt_num, testing=testing)
+    affine = img.affine
+    spacing = affine.diagonal()[:3]
+    return spacing
 
 def plot_nimg_data(layer:int, *args): #Max 4 imgs
     if len(args) == 0: return
@@ -195,12 +207,6 @@ def plot_img_overlay(img, overlay): #Overlay is a 2D array, containing x,y coord
     plt.scatter(overlay[:,1], overlay[:,0], color='red', marker=',', alpha=0.4)
     plt.title("Image Data")
     plt.show()
-
-def get_spacing(pt_num:int, testing:bool=False):
-    img = nib_from_int(pt_num, testing=testing)
-    affine = img.affine
-    spacing = affine.diagonal()[:3]
-    return spacing
 
 def plot_img_data(img:np.ndarray, layer:int):
     plt.figure(figsize = (10,10))
@@ -248,9 +254,3 @@ def label_reader(pt_num:int, testing:bool=False):
     return info
 
 get_pd_data()
-# obj = nib_from_int(1)
-# print(obj.header["pixdim"][3])
-# print(get_spacing(1))
-# print(data)
-
-# plot_ed_es(9,5)

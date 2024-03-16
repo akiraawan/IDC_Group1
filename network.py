@@ -30,7 +30,7 @@ def concat_3d(up, conv):
     return layers.Concatenate()([up, conv])
 
 def output_conv3d(inputs):
-    return layers.Conv3D(3,1, padding="same", activation="softmax")(inputs)
+    return layers.Conv3D(4,1, padding="same", activation="softmax")(inputs)
 
 def first_step(inputs, inputshape, n_filters):
     layer = first_double_conv3d(inputs, inputshape, n_filters)

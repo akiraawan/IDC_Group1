@@ -1,46 +1,38 @@
 from utils import *
-import asyncio
 import tensorflow as tf
+from matplotlib.colors import ListedColormap
 
 CROP_SIZE = (224,224,10)
 
-async def load_img_train_async(pt_num:int, frame:Frame):
-    img = await asyncio.create_task(get_img_train(pt_num, frame))
-    img_mask = await asyncio.create_task(get_mask_train(pt_num, frame))
-    img = await asyncio.create_task(img_standard(img, CROP_SIZE))
-    img_mask = await asyncio.create_task(img_standard(img_mask, CROP_SIZE, mask=True))
-    return img, img_mask
+def tensor_train_data(random:bool=True):
+    x_train = []
+    y_train = []
+    for i in range(1, PT_NUM+1):
+        dia = img_standard(i, Frame.END_DIASTOLIC, CROP_SIZE, random)
+        sys = img_standard(i, Frame.END_SYSTOLIC, CROP_SIZE, random)
+        x_train += [dia[0], sys[0]]
+        y_train += [dia[1], sys[1]]
+    return x_train, y_train
 
-def panda_train_data(series, frame:Frame):
-    pt_num = series['PtNum']
-    print(pt_num)
-    future = asyncio.run_coroutine_threadsafe(load_img_train_async(pt_num, frame), loop)
-    print(future.result())
-    return future.result()
+# img, img_mask = img_standard(1, Frame.END_DIASTOLIC, CROP_SIZE, True)
+# img2, img_mask2 = img_standard(30, Frame.END_DIASTOLIC, CROP_SIZE, True)
+# plt.figure(figsize = (10,10))
+# plt.subplot(2,2,1)
+# plt.imshow(img[:,:,5], cmap='gray')
+# plt.title("Image Data1")
+# class_indices = np.argmax(img_mask[:,:,5], axis=-1)
+# colors = ['white', 'green', 'blue', 'red']
+# cmap = ListedColormap(colors)
+# plt.subplot(2,2,2)
+# plt.imshow(class_indices, cmap=cmap, interpolation='nearest', aspect='equal')
+# plt.title("Image Data2")
 
-async def tensor_train_data():
-    ptnums = data.loc[:, ['PtNum']]
-    results = []
-    #loop = asyncio.get_event_loop()
-    for _, row in ptnums.iterrows():
-        task = asyncio.create_task(load_img_train_async(row['PtNum'], Frame.END_DIASTOLIC))
-        results.append(task)
-        task = asyncio.create_task(load_img_train_async(row['PtNum'], Frame.END_SYSTOLIC))
-        results.append(task)
-    rows = await asyncio.gather(*results)
-    return rows
-    # df = pd.concat([df1, df2], axis=0)
-    # x = df.iloc[:, 0]
-    # y = df.iloc[:, 1]
-    # print(x)
-    # print(y)
-    # x_tensor = tf.constant(x.values, tf.float32)
-    # y_tensor = tf.constant(y.values, tf.float32)
-    # return x_tensor, y_tensor
+# plt.subplot(2,2,3)
+# plt.imshow(img2[:,:,5], cmap='gray')
+# plt.title("Image Data3")
 
-#tensor_train_data()
-
-# img_data, img_mask_data = asyncio.run(load_img_train_async(30, Frame.END_DIASTOLIC))
-# #img_data = np.flip(img_data, 0) #flip horizontally(0), vertically(1)
-# #img_data = np.rot90(img_data) #set k, 1k =90 degrees
-# plot_nimg_data(5, img_data, img_mask_data)
+# class_indices = np.argmax(img_mask2[:,:,5], axis=-1)
+# plt.subplot(2,2,4)
+# plt.imshow(class_indices, cmap=cmap, interpolation='nearest', aspect='equal')
+# plt.title("Image Data4")
+# plt.show()
