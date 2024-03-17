@@ -10,7 +10,6 @@ import tensorflow as tf
 from scipy.ndimage import map_coordinates
 from scipy.ndimage.filters import gaussian_filter
 import elasticdeform
-from data import load_mask, CROP_SIZE
 #gt = mask
 #4d = cine-mri over time
 
@@ -18,6 +17,11 @@ TEST_DIR = "../database/testing"
 TEST_PT_NUM = 50
 TRAINING_DIR = "../database/training"
 PT_NUM = 100
+CROP_SIZE = (224,224,10)
+MASK_TRAINING_DIR = "./masks_training"
+MASK_TESTING_DIR = "./masks_testing"
+MODEL_PATH = "../unet-0.keras" #"./unet_models/unet-0.keras"
+CLASS_LABELS = ['NOR', 'MINF', 'DCM', 'HCM', 'ARV']
 
 class Frame(Enum):
     FULL = 0
@@ -96,6 +100,14 @@ def nib_from_int(pt_num:int, frame=Frame.FULL, mask=False, testing:bool=False):
     path = filepath_from_int(pt_num, frame, mask, testing=testing)
     return nib.nifti1.load(path)
 
+def load_mask(pt_num:int, testing:bool=False):
+    directory = MASK_TESTING_DIR if testing else MASK_TRAINING_DIR
+    num = str(pt_num).zfill(3)
+    filename = f"patient{num}_gt.nii"
+    path = os.path.join(directory, filename)
+    mask = nib.nifti1.load(path)
+    return mask
+
 def normalise_img(img:np.ndarray): #Normalised to Zero mean and unit variance
     mean_intensity = np.mean(img)
     std_intensity = np.std(img)
@@ -166,6 +178,12 @@ def img4d_extraction(img:nib.nifti1.Nifti1Image, crop_size):
     img = normalise_img(img)
     img = resize_img(img, crop_size)
     img = center_crop(img, crop_size).astype(np.float32)
+    return img
+
+def img_mask_extraction(pt_num:int, frame:Frame, crop_size):
+    img = resample_volume(nib_from_int(pt_num, frame, True))
+    img = resize_img(img, crop_size)
+    img = center_crop(img, crop_size).astype(np.int8)
     return img
 
 def img_extraction(pt_num:int, frame:Frame, crop_size, random:bool=False):
