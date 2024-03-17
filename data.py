@@ -154,6 +154,7 @@ def masks_creation():
 # class_indices = np.argmax(img_mask[:,:,5], axis=-1)
 # colors = ['white', 'green', 'blue', 'red']
 # cmap = ListedColormap(colors)
+
 # plt.subplot(2,2,2)
 # plt.imshow(class_indices, cmap=cmap, interpolation='nearest', aspect='equal')
 # plt.title("Image Data2")

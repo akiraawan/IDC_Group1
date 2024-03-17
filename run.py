@@ -25,7 +25,7 @@ def make_or_restore_model(fold_index:int):
             return tf.keras.models.load_model(latest_checkpoint)
     print("Creating a new model")
     model = model_builder(shape=SHAPE)
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001, weight_decay=0.00001), loss=tf.keras.losses.CategoricalCrossentropy(), metrics=['categorical_accuracy'])
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0005, weight_decay=0.02), loss=tf.keras.losses.CategoricalCrossentropy(), metrics=['categorical_accuracy'])
     return model
 
 def plot_stats(history, val, model_name):
@@ -49,7 +49,7 @@ def plot_stats(history, val, model_name):
     plt.savefig(model_name+'_loss.png')
     plt.clf()
 
-def run_training(epochs=170, batch_size=10):
+def run_training(epochs=120, batch_size=10):
     x, y = tensor_train_data()
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
     val_scores = []
