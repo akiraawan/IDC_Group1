@@ -1,0 +1,29 @@
+Loading Python/3.11.3-GCCcore-12.3.0
+  Loading requirement: GCCcore/12.3.0 zlib/1.2.13-GCCcore-12.3.0
+    binutils/2.40-GCCcore-12.3.0 bzip2/1.0.8-GCCcore-12.3.0
+    ncurses/6.4-GCCcore-12.3.0 libreadline/8.2-GCCcore-12.3.0
+    Tcl/8.6.13-GCCcore-12.3.0 SQLite/3.42.0-GCCcore-12.3.0
+    XZ/5.4.2-GCCcore-12.3.0 libffi/3.4.4-GCCcore-12.3.0 OpenSSL/1.1
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+virtualenv 20.23.1 requires platformdirs<4,>=3.5.1, but you have platformdirs 4.2.0 which is incompatible.
+2024-03-16 22:33:04.804413: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:9261] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2024-03-16 22:33:04.804542: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:607] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2024-03-16 22:33:05.019424: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1515] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2024-03-16 22:33:05.177975: I tensorflow/core/platform/cpu_feature_guard.cc:182] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2024-03-16 22:33:19.308625: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
+2024-03-16 22:34:01.300054: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1929] Created device /device:GPU:0 with 22996 MB memory:  -> device: 0, name: Quadro RTX 6000, pci bus id: 0000:81:00.0, compute capability: 7.5
+2024-03-16 22:34:02.075300: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1929] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 22996 MB memory:  -> device: 0, name: Quadro RTX 6000, pci bus id: 0000:81:00.0, compute capability: 7.5
+2024-03-16 22:36:02.464199: I external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:454] Loaded cuDNN version 8907
+2024-03-16 22:36:03.239113: I external/local_tsl/tsl/platform/default/subprocess.cc:304] Start cannot spawn child process: No such file or directory
+2024-03-16 22:36:19.267800: I external/local_xla/xla/service/service.cc:168] XLA service 0x145aff961660 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+2024-03-16 22:36:19.267882: I external/local_xla/xla/service/service.cc:176]   StreamExecutor device (0): Quadro RTX 6000, Compute Capability 7.5
+2024-03-16 22:36:19.276683: I tensorflow/compiler/mlir/tensorflow/utils/dump_mlir_util.cc:269] disabling MLIR crash reproducer, set env var `MLIR_CRASH_REPRODUCER_DIRECTORY` to enable.
+2024-03-16 22:36:19.494253: I external/local_tsl/tsl/platform/default/subprocess.cc:304] Start cannot spawn child process: No such file or directory
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1710628579.539103  917036 device_compiler.h:186] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
+Traceback (most recent call last):
+  File "/rds/general/user/ehc22/home/IDC_Group1/run.py", line 34, in <module>
+    acc = history.history['categorical_accuracy']
+          ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'categorical_accuracy'
