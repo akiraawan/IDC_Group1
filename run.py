@@ -73,7 +73,7 @@ def run_training(epochs=170, batch_size=10):
             )
         ]
 
-        history = model.fit(x_train, y_train, epochs=epochs, callbacks=callbacks, batch_size=batch_size, verbose=2)
+        history = model.fit(x_train, y_train, epochs=epochs, callbacks=callbacks, batch_size=batch_size, verbose=1)
         val = model.evaluate(x_val, y_val, verbose=1)
 
         model_name = "unet-"+str(fold_index)
