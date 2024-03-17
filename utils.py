@@ -88,21 +88,40 @@ def resample_volume(img:nib.nifti1.Nifti1Image, voxel_size=[1.25,1.25,10]):
 
 def resize_img(img:np.ndarray, new_shape):
     shape = img.shape
+    if len(shape) == 4:
+        shape = img.shape[:3]
+        pad_value = img[0, 0, 0, 0]
+    else:
+        pad_value = img[0, 0, 0]
     if np.any(np.array(shape) < np.array(new_shape)):
         new_shape = tuple(np.max(np.concatenate((shape, new_shape)).reshape((2, len(shape))), axis=0))
+        if len(img.shape) == 4:
+            new_shape = new_shape + (img.shape[3],)
     else:
         return img
-    pad_value = img[0, 0, 0]
     res = np.ones(new_shape, dtype=img.dtype) * pad_value
     start = np.array(new_shape) / 2. - np.array(shape) / 2.
-    res[int(start[0]):int(start[0]) + int(shape[0]),
-        int(start[1]):int(start[1]) + int(shape[1]),
-        int(start[2]):int(start[2]) + int(shape[2])] = img
+    if len(img.shape) == 4:
+        res[int(start[0]):int(start[0]) + int(shape[0]),
+            int(start[1]):int(start[1]) + int(shape[1]),
+            int(start[2]):int(start[2]) + int(shape[2]),
+            :] = img
+    else:
+        res[int(start[0]):int(start[0]) + int(shape[0]),
+            int(start[1]):int(start[1]) + int(shape[1]),
+            int(start[2]):int(start[2]) + int(shape[2])] = img
     return res
 
 def center_crop(img:np.ndarray, crop_size):
-    center = np.array(img.shape) / 2.
-    return img[int(center[0] - crop_size[0] / 2.):int(center[0] + crop_size[0] / 2.),
+    if len(img.shape) == 4:
+        center = np.array(img.shape[:3]) / 2.
+        return img[int(center[0] - crop_size[0] / 2.):int(center[0] + crop_size[0] / 2.),
+           int(center[1] - crop_size[1] / 2.):int(center[1] + crop_size[1] / 2.),
+           int(center[2] - crop_size[2] / 2.):int(center[2] + crop_size[2] / 2.),
+           :]
+    else:
+        center = np.array(img.shape) / 2.
+        return img[int(center[0] - crop_size[0] / 2.):int(center[0] + crop_size[0] / 2.),
            int(center[1] - crop_size[1] / 2.):int(center[1] + crop_size[1] / 2.),
            int(center[2] - crop_size[2] / 2.):int(center[2] + crop_size[2] / 2.)]
 
@@ -122,8 +141,8 @@ def random_crop(img:np.ndarray, img_mask:np.ndarray, crop_size):
     return (img[lb_x:lb_x + crop_size[0], lb_y:lb_y + crop_size[1], lb_z:lb_z + crop_size[2]], 
             img_mask[lb_x:lb_x + crop_size[0], lb_y:lb_y + crop_size[1], lb_z:lb_z + crop_size[2]])
 
-def img4d_extraction(pt_num:int, crop_size):
-    img = resample_volume(nib_from_int(pt_num))
+def img4d_extraction(pt_num:int, crop_size, testing:bool=False):
+    img = resample_volume(nib_from_int(pt_num, testing=testing))
     img = normalise_img(img)
     img = resize_img(img, crop_size)
     img = center_crop(img, crop_size).astype(np.float32)
