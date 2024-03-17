@@ -3,6 +3,7 @@ import tensorflow as tf
 from matplotlib.colors import ListedColormap
 
 CROP_SIZE = (224,224,10)
+MODEL_PATH = "./unet-1.keras"
 
 def tensor_train_data(random:bool=True):
     x_train = []
@@ -13,6 +14,12 @@ def tensor_train_data(random:bool=True):
         x_train += [dia[0], sys[0]]
         y_train += [dia[1], sys[1]]
     return x_train, y_train
+
+def feature_train_data():
+    model = tf.keras.models.load_model(MODEL_PATH)
+    for i in range(1, PT_NUM+1):
+        img = img4d_extraction()
+        img_mask = model.predict(img)
 
 # img, img_mask = img_standard(1, Frame.END_DIASTOLIC, CROP_SIZE, True)
 # img2, img_mask2 = img_standard(30, Frame.END_DIASTOLIC, CROP_SIZE, True)

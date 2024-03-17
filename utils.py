@@ -122,6 +122,28 @@ def random_crop(img:np.ndarray, img_mask:np.ndarray, crop_size):
     return (img[lb_x:lb_x + crop_size[0], lb_y:lb_y + crop_size[1], lb_z:lb_z + crop_size[2]], 
             img_mask[lb_x:lb_x + crop_size[0], lb_y:lb_y + crop_size[1], lb_z:lb_z + crop_size[2]])
 
+def img4d_extraction(pt_num:int, crop_size):
+    img = resample_volume(nib_from_int(pt_num))
+    img = normalise_img(img)
+    img = resize_img(img, crop_size)
+    img = center_crop(img, crop_size).astype(np.float32)
+    return img
+
+def img_extraction(pt_num:int, frame:Frame, crop_size, random:bool=False):
+    img = resample_volume(nib_from_int(pt_num, frame))
+    img_mask = resample_volume(nib_from_int(pt_num, frame, True))
+    img = normalise_img(img)
+    img = resize_img(img, crop_size)
+    img_mask = resize_img(img_mask, crop_size)
+    if random:
+        img, img_mask = random_crop(img, img_mask, crop_size)
+        img = img.astype(np.float32)
+        img_mask = img_mask.astype(np.int8)
+    else:
+        img = center_crop(img, crop_size).astype(np.float32)
+        img_mask = center_crop(img, crop_size).astype(np.int8)
+    return img, img_mask
+
 def img_standard(pt_num:int, frame:Frame, crop_size, random:bool=False, n_classes:int=4):
     img = resample_volume(nib_from_int(pt_num, frame))
     img_mask = resample_volume(nib_from_int(pt_num, frame, True))
