@@ -25,7 +25,7 @@ def make_or_restore_model(fold_index:int):
             return tf.keras.models.load_model(latest_checkpoint)
     print("Creating a new model")
     model = model_builder(shape=SHAPE)
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001, weight_decay=0.00001), loss=tf.keras.losses.CategoricalCrossentropy(), metrics=['accuracy'])
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001, weight_decay=0.00001), loss=tf.keras.losses.CategoricalCrossentropy(), metrics=['categorical_accuracy'])
     return model
 
 def plot_stats(history, val, model_name):
