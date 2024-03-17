@@ -3,12 +3,14 @@ import nibabel as nib
 import nibabel.processing as nib_pro
 from enum import Enum
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 import pandas as pd
 import numpy as np
 import tensorflow as tf
 from scipy.ndimage import map_coordinates
 from scipy.ndimage.filters import gaussian_filter
 import elasticdeform
+from data import load_mask, CROP_SIZE
 #gt = mask
 #4d = cine-mri over time
 
@@ -22,9 +24,29 @@ class Frame(Enum):
     END_DIASTOLIC = 1
     END_SYSTOLIC = 2
 
+def pt_dir_from_int(pt_num:int, testing:bool=False):
+    if testing:
+        directory = TEST_DIR
+    else:
+        directory = TRAINING_DIR
+    num = str(pt_num).zfill(3)
+    filename = "patient"+num
+    return os.path.join(directory, filename)
+
+def label_reader(pt_num:int, testing:bool=False):
+    f = open(os.path.join(pt_dir_from_int(pt_num, testing=testing), "Info.cfg"), "r")
+    text = f.read()
+    f.close()
+    lines = text.split('\n')
+    info = []
+    for i in lines:
+        j = i.split(": ")
+        if len(j) < 2: continue
+        info.append(j[1])
+    return info
+
 def get_pd_data(testing:bool=False):
     columns = ["PtNum", "ED", "ES", "Group", "Height", "NbFrame", "Weight", "XLen", "YLen", "ZLen", "Time"]
-    global data
     data = pd.DataFrame(columns=columns)
     x_start = 1 
     x_end = PT_NUM + 1
@@ -39,15 +61,10 @@ def get_pd_data(testing:bool=False):
         for j in img_4d:
             info.append(j)
         data.loc[len(data.index)] = info
+    return data
 
-def pt_dir_from_int(pt_num:int, testing:bool=False):
-    if testing:
-        directory = TEST_DIR
-    else:
-        directory = TRAINING_DIR
-    num = str(pt_num).zfill(3)
-    filename = "patient"+num
-    return os.path.join(directory, filename)
+training_data_DF = get_pd_data()
+testing_data_DF = get_pd_data(True)
 
 def filepath_from_int(pt_num:int, frame=Frame.FULL, mask=False, testing:bool=False):
     pt_dir = pt_dir_from_int(pt_num, testing=testing)
@@ -56,14 +73,18 @@ def filepath_from_int(pt_num:int, frame=Frame.FULL, mask=False, testing:bool=Fal
         case Frame.FULL:
             filename += "_4d"
         case Frame.END_DIASTOLIC:
-            frame_num = int(data.loc[data["PtNum"] == pt_num, "ED"].values[0])
-            if frame_num < 10:
-                frame_num = "0" + str(frame_num)
+            if testing:
+                frame_num = int(testing_data_DF.loc[testing_data_DF["PtNum"] == pt_num, "ED"].values[0])
+            else:
+                frame_num = int(training_data_DF.loc[training_data_DF["PtNum"] == pt_num, "ED"].values[0])
+            frame_num = str(frame_num).zfill(2)
             filename += ("_frame" + str(frame_num))
         case Frame.END_SYSTOLIC:
-            frame_num = int(data.loc[data["PtNum"] == pt_num, "ES"].values[0])
-            if frame_num < 10:
-                frame_num = "0" + str(frame_num)
+            if testing:
+                frame_num = int(testing_data_DF.loc[testing_data_DF["PtNum"] == pt_num, "ES"].values[0])
+            else:
+                frame_num = int(training_data_DF.loc[training_data_DF["PtNum"] == pt_num, "ES"].values[0])
+            frame_num = str(frame_num).zfill(2)
             filename += ("_frame" + str(frame_num))
     if mask and frame.value:
         filename += "_gt.nii"
@@ -82,7 +103,6 @@ def normalise_img(img:np.ndarray): #Normalised to Zero mean and unit variance
     return norm_img
 
 def resample_volume(img:nib.nifti1.Nifti1Image, voxel_size=[1.25,1.25,10]):
-    voxel_size = np.array(voxel_size) / np.array(list(img.header.get_zooms()))
     resampled_img = nib_pro.resample_to_output(img, voxel_size, mode='wrap')
     return resampled_img.get_fdata()
 
@@ -141,8 +161,8 @@ def random_crop(img:np.ndarray, img_mask:np.ndarray, crop_size):
     return (img[lb_x:lb_x + crop_size[0], lb_y:lb_y + crop_size[1], lb_z:lb_z + crop_size[2]], 
             img_mask[lb_x:lb_x + crop_size[0], lb_y:lb_y + crop_size[1], lb_z:lb_z + crop_size[2]])
 
-def img4d_extraction(pt_num:int, crop_size, testing:bool=False):
-    img = resample_volume(nib_from_int(pt_num, testing=testing))
+def img4d_extraction(img:nib.nifti1.Nifti1Image, crop_size):
+    img = resample_volume(img)
     img = normalise_img(img)
     img = resize_img(img, crop_size)
     img = center_crop(img, crop_size).astype(np.float32)
@@ -282,16 +302,20 @@ def plot_ed_es(pt_num:int, layer:int, testing:bool=False): #Layer = y-axis
 
     plt.show()
 
-def label_reader(pt_num:int, testing:bool=False):
-    f = open(os.path.join(pt_dir_from_int(pt_num, testing=testing), "Info.cfg"), "r")
-    text = f.read()
-    f.close()
-    lines = text.split('\n')
-    info = []
-    for i in lines:
-        j = i.split(": ")
-        if len(j) < 2: continue
-        info.append(j[1])
-    return info
+def plot_gen_mask(pt_num:int, frame:int):
+    new_mask = load_mask(pt_num, frame).get_fdata()[0,:,:,:,:]
+    mask_img = nib_from_int(pt_num)
+    mask_img_data = mask_img.get_fdata()[:,:,:,frame]
+    mask_img_data = img4d_extraction(nib.Nifti1Image(mask_img_data, mask_img.affine), CROP_SIZE)
 
-get_pd_data()
+    plt.figure(figsize = (10,10))
+    plt.subplot(2,2,1)
+    plt.imshow(mask_img_data[:,:,5], cmap='gray')
+    plt.title("Image Data1")
+    class_indices = np.argmax(new_mask[:,:,5], axis=-1)
+    colors = ['white', 'green', 'blue', 'red']
+    cmap = ListedColormap(colors)
+    plt.subplot(2,2,2)
+    plt.imshow(class_indices, cmap=cmap, interpolation='nearest', aspect='equal')
+    plt.title("Image Data2")
+    plt.show()

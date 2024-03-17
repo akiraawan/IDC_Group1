@@ -3,8 +3,8 @@ import tensorflow as tf
 from matplotlib.colors import ListedColormap
 
 CROP_SIZE = (224,224,10)
-MODEL_PATH = "./unet_models/unet-0.keras"
-
+#MODEL_PATH = "./unet_models/unet-0.keras"
+MODEL_PATH = "../unet-0.keras"
 MASKS_DIR = "./masks"
 if not os.path.exists(MASKS_DIR):
     os.makedirs(MASKS_DIR)
@@ -32,36 +32,54 @@ def tensor_test_data(random:bool=True):
 def masks_creation():
     model = tf.keras.models.load_model(MODEL_PATH)
     for i in range(1, PT_NUM+1):
-        img = img4d_extraction(i, CROP_SIZE, True)
-        total_frames = data.loc[i-1,'NbFrame']
-        for j in range(total_frames):
-            img_mask = model.predict(img[:,:,:,j])
-            nifti_mask = nib.Nifti1Image(img_mask, affine=np.eye(4))
-            nifti_mask.header['pixdim'] = (1.25, 1.25, 10.0, 1.0)
-            ptnum = str(i).zfill(3)
-            framenum = str(j).zfill(2)
-            save_dir = os.path.join(MASKS_DIR, f"/patient{ptnum}")
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir)
-            save_path = os.path.join(save_dir, f"/patient{ptnum}_frame{framenum}_gt.nii")
-            nib.save(nifti_mask, save_path)
-    for i in range(PT_NUM+1, PT_NUM+TEST_PT_NUM+1):
-        img = img4d_extraction(i, CROP_SIZE, True)
-        get_pd_data(True)
-        total_frames = data.loc[i-1,'NbFrame']
-        for j in range(total_frames):
-            img_mask = model.predict(img[:,:,:,j])
-            nifti_mask = nib.Nifti1Image(img_mask, affine=np.eye(4))
-            nifti_mask.header['pixdim'] = (1.25, 1.25, 10.0, 1.0)
-            ptnum = str(i).zfill(3)
-            framenum = str(j).zfill(2)
-            save_dir = os.path.join(MASKS_DIR, f"/patient{ptnum}")
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir)
-            save_path = os.path.join(save_dir, f"/patient{ptnum}_frame{framenum}_gt.nii")
-            nib.save(nifti_mask, save_path)
+        img = nib_from_int(i)
+        total_frames = training_data_DF.loc[i-1,'NbFrame']
+        for i in range(1, PT_NUM+1):
+            img = nib_from_int(i)
+            total_frames = training_data_DF.loc[i-1,'NbFrame']
+            for j in range(int(total_frames)):
+                ptnum = str(i).zfill(3)
+                framenum = str(j+1).zfill(2)
+                save_dir = os.path.join(MASKS_DIR, f"patient{ptnum}")
+                if not os.path.exists(save_dir):
+                    os.makedirs(save_dir)
+                save_path = os.path.join(save_dir, f"patient{ptnum}_frame{framenum}_gt.nii")
+                if os.path.exists(save_path):
+                    continue;
+                frame = img.get_fdata()[:,:,:,j]
+                frame = img4d_extraction(nib.Nifti1Image(frame, img.affine), CROP_SIZE)
+                frame = np.expand_dims(frame, axis=0)
+                img_mask = model.predict(frame)
+                affine = np.diag([1.25, 1.25, 10.0, 1.0])
+                nifti_mask = nib.Nifti1Image(img_mask, affine=affine)
+                nib.save(nifti_mask, save_path)
+        for i in range(PT_NUM+1, PT_NUM+TEST_PT_NUM+1):
+            img = nib_from_int(i, testing=True)
+            total_frames = testing_data_DF.loc[i-PT_NUM-1,'NbFrame']
+            for j in range(int(total_frames)):
+                ptnum = str(i).zfill(3)
+                framenum = str(j+1).zfill(2)
+                save_dir = os.path.join(MASKS_DIR, f"patient{ptnum}")
+                if not os.path.exists(save_dir):
+                    os.makedirs(save_dir)
+                save_path = os.path.join(save_dir, f"patient{ptnum}_frame{framenum}_gt.nii")
+                if os.path.exists(save_path):
+                    continue;
+                frame = img.get_fdata()[:,:,:,j]
+                frame = img4d_extraction(nib.Nifti1Image(frame, img.affine), CROP_SIZE)
+                frame = np.expand_dims(frame, axis=0)
+                img_mask = model.predict(frame)
+                affine = np.diag([1.25, 1.25, 10.0, 1.0])
+                nifti_mask = nib.Nifti1Image(img_mask, affine=affine)
+                nib.save(nifti_mask, save_path)
 
-masks_creation()
+def load_mask(pt_num:int, frame:int):
+    num = str(pt_num).zfill(3)
+    frame = str(frame).zfill(2)
+    filename = f"patient{num}/patient{num}_frame{frame}_gt.nii"
+    path = os.path.join(MASKS_DIR, filename)
+    mask = nib.nifti1.load(path)
+    return mask
 
 # img, img_mask = img_standard(1, Frame.END_DIASTOLIC, CROP_SIZE, True)
 # img2, img_mask2 = img_standard(30, Frame.END_DIASTOLIC, CROP_SIZE, True)
