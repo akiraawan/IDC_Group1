@@ -1,5 +1,5 @@
 from utils import *
-from data import load_img_train_async
+from data import CROP_SIZE
 import cv2
 from matplotlib.patches import Polygon
 from typing import Literal
@@ -186,8 +186,7 @@ def get_dynamic_features(img_4d:np.ndarray, structure:Structure):
     feature_dict['stepdiff_max_lv_rv'] = np.where(lv_volumes == lv_volumes.max())[0] - np.where(rv_volumes == rv_volumes.max())[0]
     return feature_dict
     
-
-img_data, img_mask_data = asyncio.run(load_img_train_async(30, Frame.END_DIASTOLIC))
+img_data, img_mask_data = img_extraction(30, Frame.END_DIASTOLIC, CROP_SIZE, True)
 features = get_features(img_mask_data, Structure.LVM)
 lv_V, lv_M, rv_V = get_chamber_volumes(img_mask_data)
 print(f"THICKNESS: Max = {features['max_thickness']}, Min = {features['min_thickness']}, Std = {features['std_thickness']}, Mean = {features['mean_thickness']}")

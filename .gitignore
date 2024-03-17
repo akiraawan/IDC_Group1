@@ -2,3 +2,7 @@
 .Rhistory
 .venv/
 __pycache__/
+masks/
+ckpt/
+*unet.o*
+*unet.e*
