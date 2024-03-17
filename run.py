@@ -31,8 +31,8 @@ def make_or_restore_model(fold_index:int):
 def plot_stats(history, val, model_name):
     acc = history.history['categorical_accuracy']
     loss = history.history['loss']
-    val_loss = val['val_loss']
-    val_acc = val['val_categorical_accuracy']
+    val_loss = val[0]
+    val_acc = val[1]
     epochs = range(len(acc))
 
     plt.plot(epochs, acc, 'r', label='Training accuracy')

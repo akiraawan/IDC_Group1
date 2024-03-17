@@ -144,9 +144,9 @@ def img_extraction(pt_num:int, frame:Frame, crop_size, random:bool=False):
         img_mask = center_crop(img, crop_size).astype(np.int8)
     return img, img_mask
 
-def img_standard(pt_num:int, frame:Frame, crop_size, random:bool=False, n_classes:int=4):
-    img = resample_volume(nib_from_int(pt_num, frame))
-    img_mask = resample_volume(nib_from_int(pt_num, frame, True))
+def img_standard(pt_num:int, frame:Frame, crop_size, random:bool=False, n_classes:int=4, testing:bool=False):
+    img = resample_volume(nib_from_int(pt_num, frame, testing=testing))
+    img_mask = resample_volume(nib_from_int(pt_num, frame, True, testing=testing))
     img = normalise_img(img)
     img = resize_img(img, crop_size)
     img_mask = resize_img(img_mask, crop_size)
