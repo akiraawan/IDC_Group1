@@ -19,12 +19,18 @@ def get_chamber_volumes(img:np.ndarray): #takes in 3D arrays
 def get_contours(img:np.ndarray, structure:Structure, showFig=False):
     img_data = img.astype(np.uint8)
     binary_img = (img_data == structure.value).astype(np.uint8) #left ventricular wall
-    contours, _ = cv2.findContours(binary_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(binary_img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_TC89_KCOS)
     if structure == Structure.LVM:
-        if len(contours) < 2:
+        if len(contours) < 2 or len(hierarchy) < 1:
             return False
+        for i, h in enumerate(hierarchy[0]):
+            if h[3] == -1:
+                if i != 0:
+                    return False
         inner_contour = contours[1]
         outer_contour = contours[0].squeeze()
+        if len(inner_contour.squeeze()) < 3 or len(outer_contour) < 3:
+            return False
     else:
         if len(contours) < 1:
             return False
@@ -35,7 +41,7 @@ def get_contours(img:np.ndarray, structure:Structure, showFig=False):
         else:
             outer_contour = np.asarray(contours).squeeze()
     if showFig:
-        if structure == Structure.LVM:
+        if structure == Structure.LVM or len(contours) == 2:
             contours = [outer_contour, inner_contour]
         else:
             contours = [outer_contour]
@@ -65,7 +71,7 @@ def get_circumference(contour):
 def get_circularity(contour):
     area = cv2.contourArea(contour) * 1.25 * 1.25
     perimeter = cv2.arcLength(contour, closed=True) * 1.25
-    circularity = (4 * np.pi * area) / (perimeter ** 2)
+    circularity = float((4 * np.pi * area) / (perimeter ** 2))
     return circularity
 
 def mosteller_method(height, weight): #Height in cm, weight in kg
@@ -130,10 +136,17 @@ def get_features(img:np.ndarray, structure:Structure):
     circumference = []
     circularity = []
     for i in range(img.shape[2]):
-        result = get_contours(img[:,:,i], structure)
+        result = get_contours(img[:,:,i], structure, True)
         if type(result) == np.ndarray: pass
         elif result == False: continue
         if structure == Structure.LVM:
+            print(img.shape)
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            contour_image = img.copy() if len(img.shape) == 3 else cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+            cv2.drawContours(img, result, -1, (0, 255, 0), 2) 
+            cv2.imshow('Contours', contour_image)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
             thickness.extend(slice_thickness(result[0], result[1]))
             circumference.append(get_circumference(result[0]))
             circularity.append(get_circularity(result[0]))
@@ -141,6 +154,10 @@ def get_features(img:np.ndarray, structure:Structure):
             circumference.append(get_circumference(result))
             circularity.append(get_circularity(result))
     feature_dict = {}
+    print("Circumference:")
+    print(circumference)
+    print("Circularity:")
+    print(circularity)
     circularity = np.asarray(circularity).squeeze()
     circumference = np.asarray(circumference).squeeze()
     circumference = circumference * 1.25
@@ -161,41 +178,45 @@ def get_dynamic_features(img_4d:nib.nifti1.Nifti1Image, structure:Structure):
     rv_volumes = []
     lv_mass = []
     img_data = img_4d.get_fdata()
-    img_data = standardise_mask(img_data)
     for i in range(img_4d.shape[3]):
         img = img_data[:,:,:,i]
-        img = img4d_extraction(nib.Nifti1Image(img, img_4d.affine), CROP_SIZE)
         lv_V, lvw_V, rv_V = get_chamber_volumes(img)
-        lv_volumes.append(float(lv_V))
-        rv_volumes.append(float(rv_V))
-        lv_mass.append(float(lvw_V))
+        if float(lv_V) != 0.0:
+            lv_volumes.append(float(lv_V))
+        if float(rv_V) != 0.0:
+            rv_volumes.append(float(rv_V))
+        if float(lvw_V) != 0.0:
+            lv_mass.append(float(lvw_V))
     feature_dict = {}
     lv_volumes = np.asarray(lv_volumes)
     rv_volumes = np.asarray(rv_volumes)
     lv_mass = np.asarray(lv_mass)
+    print(f"lv_volume: {lv_volumes}")
+    print(f"rv_volume: {rv_volumes}")
+    print(f"lv_mass: {lv_mass}")
     match structure:
         case Structure.RVC:
-            feature_dict['max_v'] = rv_volumes.max()
-            feature_dict['min_v'] = rv_volumes.min()
+            feature_dict['max_v'] = float(rv_volumes.max())
+            feature_dict['min_v'] = float(rv_volumes.min())
             stats_dict = volumes_stats(rv_volumes)
             feature_dict = {**feature_dict, **stats_dict}
         case Structure.LVC:
-            feature_dict['max_v'] = lv_volumes.max()
-            feature_dict['min_v'] = lv_volumes.min()
+            feature_dict['max_v'] = float(lv_volumes.max())
+            feature_dict['min_v'] = float(lv_volumes.min())
             stats_dict = volumes_stats(lv_volumes)
             feature_dict = {**feature_dict, **stats_dict}
         case Structure.LVM:
             index = np.where(lv_volumes == lv_volumes.min())[0]
-            feature_dict['max_v'] = lv_mass.max()
-            feature_dict['min_v'] = lv_mass[index]
+            feature_dict['max_v'] = float(lv_mass.max())
+            feature_dict['min_v'] = float(lv_mass[index])
             stats_dict = volumes_stats(lv_mass)
             feature_dict = {**feature_dict, **stats_dict}
-    feature_dict['ef'] = get_ef(feature_dict['max_v'], feature_dict['min_v'])
-    feature_dict['ratio_min_lv_rv'] = lv_volumes.min() / rv_volumes.min()
-    feature_dict['ratio_min_lm_lv'] = lv_mass.min() / lv_volumes.min()
-    feature_dict['ratio_min_rv_lm'] = rv_volumes.min() / lv_mass.min()
-    feature_dict['stepdiff_min_lv_rv'] = np.where(lv_volumes == lv_volumes.min())[0] - np.where(rv_volumes == rv_volumes.min())[0]
-    feature_dict['stepdiff_max_lv_rv'] = np.where(lv_volumes == lv_volumes.max())[0] - np.where(rv_volumes == rv_volumes.max())[0]
+    feature_dict['ef'] = float(get_ef(feature_dict['max_v'], feature_dict['min_v']))
+    feature_dict['ratio_min_lv_rv'] = float(lv_volumes.min()) / float(rv_volumes.min())
+    feature_dict['ratio_min_rv_lm'] = float(rv_volumes.min()) / float(lv_mass.min())
+    feature_dict['ratio_min_lm_lv'] = float(lv_mass.min()) / float(lv_volumes.min())
+    feature_dict['stepdiff_min_lv_rv'] = int(np.where(lv_volumes == float(lv_volumes.min()))[0] - np.where(rv_volumes == float(rv_volumes.min()))[0])
+    feature_dict['stepdiff_max_lv_rv'] = int(np.where(lv_volumes == float(lv_volumes.max()))[0] - np.where(rv_volumes == float(rv_volumes.max()))[0])
     return feature_dict
     
 # img_data, img_mask_data = img_extraction(30, Frame.END_DIASTOLIC, CROP_SIZE, True)

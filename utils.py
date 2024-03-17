@@ -18,9 +18,9 @@ TEST_PT_NUM = 50
 TRAINING_DIR = "../database/training"
 PT_NUM = 100
 CROP_SIZE = (224,224,10)
-MASK_TRAINING_DIR = "./masks_training"
+MASK_TRAINING_DIR = "./masks_training_2"
 MASK_TESTING_DIR = "./masks_testing"
-MODEL_PATH = "../unet-0.keras" #"./unet_models/unet-0.keras"
+MODEL_PATH = "../unet-1.keras" #"./unet_models/unet-0.keras"
 CLASS_LABELS = ['NOR', 'MINF', 'DCM', 'HCM', 'ARV']
 
 class Frame(Enum):
@@ -276,7 +276,7 @@ def plot_flat_nimg_data(*args): #Max 4 imgs
             plt.title(text)
     else:
         plt.figure(figsize = (10,10))
-        plt.imshow(imgs, cmap = 'gray')
+        plt.imshow(imgs[0], cmap = 'gray')
         plt.title("Image Data")
     plt.show()
 
@@ -321,7 +321,7 @@ def plot_ed_es(pt_num:int, layer:int, testing:bool=False): #Layer = y-axis
     plt.show()
 
 def plot_gen_mask(pt_num:int, frame:int):
-    new_mask = load_mask(pt_num, frame).get_fdata()[0,:,:,:,:]
+    new_mask = load_mask(pt_num).get_fdata()[0,:,:,:,:]
     mask_img = nib_from_int(pt_num)
     mask_img_data = mask_img.get_fdata()[:,:,:,frame]
     mask_img_data = img4d_extraction(nib.Nifti1Image(mask_img_data, mask_img.affine), CROP_SIZE)
