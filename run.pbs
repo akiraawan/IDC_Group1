@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -l select=1:ncpus=4:mem=96gb:ngpus=1:gpu_type=RTX6000:cpu_type=rome
+#PBS -l select=1:ncpus=4:mem=96gb:ngpus=4:gpu_type=RTX6000:cpu_type=rome
 #PBS -l walltime=24:00:00
 #PBS -N unet
 
