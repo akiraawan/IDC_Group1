@@ -3,7 +3,7 @@ import tensorflow as tf
 from matplotlib.colors import ListedColormap
 
 CROP_SIZE = (224,224,10)
-MODEL_PATH = "../unet-0.keras"
+MODEL_PATH = "./unet_models/unet-0.keras"
 
 MASKS_DIR = "./masks"
 if not os.path.exists(MASKS_DIR):
