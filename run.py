@@ -49,7 +49,7 @@ def plot_stats(history, val, model_name):
     plt.savefig(model_name+'_loss.png')
     plt.clf()
 
-def run_training(epochs=170, batch_size=20):
+def run_training(epochs=170, batch_size=10):
     x, y = tensor_train_data()
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
     val_scores = []
